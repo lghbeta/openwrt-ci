@@ -66,6 +66,8 @@ uci commit luci
 #uci commit firewall
 
 # System config
+uci set system.@system[0].timezone='CST-8'
+uci set system.@system[0].zonename='Asia/Shanghai'
 uci set system.@system[0].conloglevel='4'
 uci set system.@system[0].cronloglevel='8'
 uci delete system.ntp.server
