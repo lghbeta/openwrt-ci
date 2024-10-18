@@ -52,8 +52,8 @@ sed -i "s/^[^#].*qualcommax\/ipq60xx.*/#&/g" /etc/opkg/distfeeds.conf
 sed -i "/nss_packages/d;/sqm_scripts_nss/d" /etc/opkg/distfeeds.conf
 
 # Set default theme to luci-theme-argon
-uci set luci.main.mediaurlbase='/luci-static/argon'
-uci commit luci
+#uci set luci.main.mediaurlbase='/luci-static/argon'
+#uci commit luci
 
 # Disable IPV6 ula prefix
 #sed -i 's/^[^#].*option ula/#&/' /etc/config/network
@@ -80,9 +80,9 @@ uci commit system
 
 # Wireless config
 #uci set wireless.radio0.country='US'
-uci set wireless.radio0.channel='44'
-uci set wireless.radio0.txpower='14'
-uci commit wireless
+#uci set wireless.radio0.channel='44'
+#uci set wireless.radio0.txpower='14'
+#uci commit wireless
 
 exit 0
 EOF

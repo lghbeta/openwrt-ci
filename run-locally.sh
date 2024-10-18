@@ -68,12 +68,12 @@ fi
 
 #源码清理重置
 cd $SRC_DIR
-git fetch --all && git reset --hard HEAD && git pull --force
+git fetch --all && git reset --hard origin/$WRT_BRANCH && git pull --force
 export WRT_HASH=$(git log -1 --pretty=format:'%h')
 
 if [ -d "$SRC_DIR"/feeds/luci ]; then
     cd "$SRC_DIR"/feeds/luci
-    git fetch --all && git reset --hard HEAD && git pull --force
+    git fetch --all && git reset --hard origin && git pull --force
 fi
 
 #执行脚本
