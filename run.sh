@@ -73,7 +73,7 @@ export WRT_HASH=$(git log -1 --pretty=format:'%h')
 
 if [ -d "$SRC_DIR"/feeds/luci ]; then
     cd "$SRC_DIR"/feeds/luci
-    git fetch --all && git reset --hard origin && git pull --force
+    git fetch --all && git reset --hard origin/HEAD && git pull --force
 fi
 
 #执行脚本
