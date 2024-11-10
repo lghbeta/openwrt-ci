@@ -32,3 +32,61 @@ if [[ $WRT_TARGET == *"IPQ"* ]]; then
 	echo "CONFIG_FEED_nss_packages=n" >> ./.config
 	echo "CONFIG_FEED_sqm_scripts_nss=n" >> ./.config
 fi
+
+#My Config
+if [[ $WRT_TARGET == *"IPQ"* && $WRT_SOURCE == *"VIKINGYFY"* ]]; then
+	echo "CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_jdcloud_re-ss-01=y" >> ./.config
+fi
+echo "CONFIG_PACKAGE_luci-app-passwall=y" >> ./.config
+echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Rust_Client=n" >> ./.config
+echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Rust_Server=n" >> ./.config
+echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_V2ray_Geodata=y" >> ./.config
+echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_SingBox=n" >> ./.config
+
+#修改菜单
+sed -i 's/"UPnP IGD & PCP\/NAT-PMP"/"UPnP"/g' $(find ./feeds/luci/applications/luci-app-upnp/ -type f -name "luci-app-upnp.json")
+#sed -i ':a;N;s/msgid "Wake on LAN +"\s*msgstr ""/msgid "Wake on LAN +"\nmsgstr "网络唤醒+"/g;ta' $(find ./package/luci-app-wolplus/po/zh_Hans/wolplus.po)
+
+#添加初始运行脚本
+mkdir -p files/etc/uci-defaults && cat << "EOF" > files/etc/uci-defaults/99-init-settings
+#!/bin/bash
+
+# Change source feeds
+sed -i "s/^[^#].*qualcommax\/ipq60xx.*/#&/g" /etc/opkg/distfeeds.conf
+sed -i "/nss_packages/d;/sqm_scripts_nss/d" /etc/opkg/distfeeds.conf
+
+# Set default theme to luci-theme-argon
+uci set luci.main.mediaurlbase='/luci-static/argon'
+uci commit luci
+
+# Disable IPV6 ula prefix
+#sed -i 's/^[^#].*option ula/#&/' /etc/config/network
+#uci set network.globals.ula_prefix=''
+#uci commit network
+
+# Enable flow offloading(Not required when using nss driver)
+#uci set firewall.@defaults[0].flow_offloading=1
+#uci set firewall.@defaults[0].flow_offloading_hw=1
+#uci commit firewall
+
+# System config
+uci set system.@system[0].timezone='CST-8'
+uci set system.@system[0].zonename='Asia/Shanghai'
+uci set system.@system[0].conloglevel='4'
+uci set system.@system[0].cronloglevel='8'
+uci delete system.ntp.server
+uci add_list system.ntp.server='ntp.aliyun.com'
+uci add_list system.ntp.server='ntp.ntsc.ac.cn'
+uci add_list system.ntp.server='cn.pool.ntp.org'
+uci add_list system.ntp.server='pool.ntp.org'
+#uci set system.@system[0].zram_size_mb='100'
+uci commit system
+
+# Wireless config
+#uci set wireless.radio0.country='CN'
+#uci set wireless.radio0.channel='44'
+#uci set wireless.radio0.txpower='20'
+#uci commit wireless
+
+exit 0
+EOF
