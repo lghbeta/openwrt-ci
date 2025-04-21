@@ -1,15 +1,6 @@
-#REDMI JDCLOUD
+#设备平台
 CONFIG_TARGET_qualcommax=y
 CONFIG_TARGET_qualcommax_ipq60xx=y
 #设备列表
-CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_jdcloud_ax1800-pro=y
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_jdcloud_re-ss-01=y
 CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_redmi_ax5-jdcloud=y
-#WIFI驱动
-CONFIG_PACKAGE_kmod-ath11k=y
-CONFIG_PACKAGE_kmod-ath11k-ahb=y
-CONFIG_PACKAGE_kmod-ath11k-pci=y
-CONFIG_PACKAGE_ath11k-firmware-ipq6018=y
-CONFIG_PACKAGE_ath11k-firmware-qcn9074=y
-#NSS选项
-CONFIG_ATH11K_NSS_SUPPORT=y
-CONFIG_ATH11K_NSS_MESH_SUPPORT=y

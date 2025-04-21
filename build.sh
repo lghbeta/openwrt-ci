@@ -17,17 +17,18 @@ case $input in
 esac
 
 #目标平台
-export WRT_TARGET=IPQ-JDC
+export WRT_CONFIG=IPQ-JDC
 #默认主题
 export WRT_THEME=argon
 #默认主机名
 export WRT_NAME=OpenWrt
-#默认WIFI名
-export WRT_WIFI=OpenWrt
+#默认WIFI名/密码
+export WRT_SSID=OpenWrt
+export WRT_WORD=
 #默认地址
 export WRT_IP=192.168.1.1
 #默认密码，仅作提示，修改无用
-export WRT_PW=无
+export WRT_PW=
 
 #源码名称
 export WRT_SOURCE=VIKINGYFY/immortalwrt
@@ -41,9 +42,13 @@ export WRT_PACKAGE=
 #CI工作目录
 export GITHUB_WORKSPACE=$(pwd)
 export WRT_DATE=$(TZ=UTC-8 date +"%y%m%d_%H%M")
-export WRT_CI=$(basename $GITHUB_WORKSPACE)
+#export WRT_MARK=$(echo $GITHUB_REPOSITORY | cut -d '/' -f 1)
+export WRT_MARK=$(basename $GITHUB_WORKSPACE)
 export WRT_VER=$(echo $WRT_REPO | cut -d '/' -f 5-)-$WRT_BRANCH
-export WRT_TYPE=$(sed -n "1{s/^#//;s/\r$//;p;q}" $GITHUB_WORKSPACE/Config/$WRT_TARGET.txt)
+export WRT_TARGET=$(grep -m 1 -oP '^CONFIG_TARGET_\K[\w]+(?=\=y)' ./Config/$WRT_CONFIG.txt | tr '[:lower:]' '[:upper:]')
+#export WRT_TYPE=$(sed -n "1{s/^#//;s/\r$//;p;q}" $GITHUB_WORKSPACE/Config/$WRT_TARGET.txt)
+export WRT_KVER=none
+export WRT_LIST=none
 
 export SRC_DIR=$GITHUB_WORKSPACE/wrt
 export RELEASE_DIR="$GITHUB_WORKSPACE"/releases/"$WRT_DATE"
@@ -54,10 +59,12 @@ echo "==========================================================================
 df -h
 echo "=================================================================================="
 echo 源码：$WRT_REPO:$WRT_BRANCH
+echo 配置：$WRT_CONFIG
 echo 平台：$WRT_TARGET
-echo 设备：$WRT_TYPE
 echo 地址：$WRT_IP
 echo 密码：$WRT_PW
+echo WIFI名称：$WRT_SSID
+echo WIFI密码：$WRT_WORD
 echo -e "==================================================================================\n"
 
 #下载编译源码
@@ -71,10 +78,22 @@ cd $SRC_DIR
 git fetch --all && git reset --hard origin/$WRT_BRANCH && git pull --force
 export WRT_HASH=$(git log -1 --pretty=format:'%h')
 
+export FEEDS_BRANCH=openwrt-24.10
+#重置luci,packages库，防止Settings.sh重复修改10_system.js
 if [ -d "$SRC_DIR"/feeds/luci ]; then
     cd "$SRC_DIR"/feeds/luci
-    git fetch --all && git reset --hard origin/HEAD && git pull --force
+    git fetch --all && git reset --hard origin/$FEEDS_BRANCH && git pull --force
 fi
+if [ -d "$SRC_DIR"/feeds/packages ]; then
+    cd "$SRC_DIR"/feeds/packages
+    git fetch --all && git reset --hard origin/$FEEDS_BRANCH && git pull --force
+fi
+#改为正式版分支
+sed -i "s/\/immortalwrt\/packages.git/\/immortalwrt\/packages.git;$FEEDS_BRANCH/" "$SRC_DIR"/feeds.conf.default
+sed -i "s/\/luci.git/\/luci.git;$FEEDS_BRANCH/" "$SRC_DIR"/feeds.conf.default
+sed -i "s/\/routing.git/\/routing.git;$FEEDS_BRANCH/" "$SRC_DIR"/feeds.conf.default
+sed -i "s/\/telephony.git/\/telephony.git;$FEEDS_BRANCH/" "$SRC_DIR"/feeds.conf.default
+sed -i "s/\/video.git/\/video.git;$FEEDS_BRANCH/" "$SRC_DIR"/feeds.conf.default
 
 #执行脚本
 echo -e "\n>>> Apply patches...\n"
@@ -101,9 +120,12 @@ $GITHUB_WORKSPACE/Scripts/Handles.sh
 echo -e "\n>>> Generate configuration...\n"
 cd $SRC_DIR/
 rm -rf ./tmp* ./.config*
-cat $GITHUB_WORKSPACE/Config/$WRT_TARGET.txt $GITHUB_WORKSPACE/Config/GENERAL.txt >> .config
+cat $GITHUB_WORKSPACE/Config/$WRT_CONFIG.txt $GITHUB_WORKSPACE/Config/GENERAL.txt >> .config
 $GITHUB_WORKSPACE/Scripts/Settings.sh
 make defconfig
+
+#env
+#exit
 
 #下载工具链
 if [[ $WRT_TEST != 'true' ]]; then
@@ -121,21 +143,24 @@ fi
 
 #发布
 cd $SRC_DIR && mkdir -p $RELEASE_DIR
-cp -f ./.config "$RELEASE_DIR"/Config_"$WRT_TARGET"_"$WRT_VER"_"$WRT_DATE".txt
+cp -f ./.config "$RELEASE_DIR"/"${WRT_TARGET,,}"_"${WRT_VER,,}"_"$WRT_DATE".config
 
 if [[ $WRT_TEST != 'true' ]]; then
     echo -e "\n>>> Release firmware to $RELEASE_DIR...\n"
-    find ./bin/targets/ -iregex ".*\(packages\)$" -exec rm -rf {} +
+    export WRT_KVER=$(find ./bin/targets/ -type f -name "*.manifest" -exec grep -oP '^kernel - \K[\d\.]+' {} \;)
+    export WRT_LIST=$(find ./bin/targets/ -type f -name "*.manifest" -exec grep -oP '^luci-(app|theme)[^ ]*' {} \; | tr '\n' ' ')
 
-    for TYPE in $WRT_TYPE ; do
-        for FILE in $(find ./bin/targets/ -type f -iname "*$TYPE*.*") ; do
-            EXT=$(basename $FILE | cut -d '.' -f 2-)
-            NAME=$(basename $FILE | cut -d '.' -f 1 | grep -io "\($TYPE\).*")
-            NEW_FILE="$WRT_VER"_"$NAME"_"$WRT_DATE"."$EXT"
-            mv -f $FILE "$RELEASE_DIR"/$NEW_FILE
-        done
-    done
+#    find ./bin/targets/ -iregex ".*\(packages\)$" -exec rm -rf {} +
+#
+#    for FILE in $(find ./bin/targets/ -type f -iname "*$WRT_TARGET*") ; do
+#        EXT=$(basename $FILE | cut -d '.' -f 2-)
+#        NAME=$(basename $FILE | cut -d '.' -f 1 | grep -io "\($WRT_TARGET\).*")
+#        NEW_FILE="$WRT_VER"_"$NAME"_"$WRT_DATE"."$EXT"
+#        mv -f $FILE "$RELEASE_DIR"/$NEW_FILE
+#    done
+
+#    find ./bin/targets/ -type f -exec mv -f {} "$RELEASE_DIR"/ \;
 
     mv ./bin/packages "$RELEASE_DIR"/
-    find ./bin/targets/ -type f -exec mv -f {} "$RELEASE_DIR"/ \;
+    mv ./bin/targets "$RELEASE_DIR"/
 fi
